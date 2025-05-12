@@ -5,6 +5,7 @@ go 1.24.2
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-resty/resty/v2 v2.16.5
+	github.com/gorilla/websocket v1.5.3
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0

@@ -116,6 +116,18 @@ func (hc *HttpClient) AddResponseMiddleware(middleware func(*resty.Client, *rest
 	hc.client.OnAfterResponse(middleware)
 }
 
+// SetDynamicHeaders 动态设置请求头
+func (hc *HttpClient) SetDynamicHeaders(headers map[string]string) {
+	hc.AddRequestMiddleware(func(c *resty.Client, req *resty.Request) error {
+		for k, v := range headers {
+			if _, exists := req.Header[k]; !exists {
+				req.SetHeader(k, v)
+			}
+		}
+		return nil
+	})
+}
+
 // Get 发送 GET 请求
 func (hc *HttpClient) Get(ctx context.Context, url string, headers map[string]string) (*resty.Response, error) {
 	request := hc.client.R().SetContext(ctx)

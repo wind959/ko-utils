@@ -195,6 +195,22 @@ func (c *WebSocketClient) SendMessage(ctx context.Context, message []byte) error
 	}
 }
 
+// SendStrMsg 发送消息到 WebSocket 服务器
+func (c *WebSocketClient) SendStrMsg(ctx context.Context, message string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.conn == nil {
+		return errors.New("not connected")
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	}
+}
+
 // SendJSON 发送JSON数据到WebSocket服务器
 func (c *WebSocketClient) SendJSON(ctx context.Context, v interface{}) error {
 	c.mu.Lock()

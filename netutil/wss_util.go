@@ -9,6 +9,7 @@ import (
 	logutil "github.com/wind959/ko-utils/logger"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -97,8 +98,13 @@ func (c *WebSocketClient) Connect(ctx context.Context, wsURL string) error {
 	}
 
 	// 连接到 WebSocket 服务器
-	conn, _, err := dialer.DialContext(ctx, wsURL, header)
+	conn, resp, err := dialer.DialContext(ctx, wsURL, header)
 	if err != nil {
+		if resp != nil {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			logutil.Error("❌ 握手失败", zap.String("status", resp.Status), zap.ByteString("body", body))
+		}
 		if c.onError != nil {
 			c.onError(err)
 		}

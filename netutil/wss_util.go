@@ -3,7 +3,6 @@ package netutil
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/wind959/ko-utils/jsonutil"
 	"golang.org/x/net/proxy"
@@ -14,36 +13,10 @@ import (
 	"time"
 )
 
-// ConnPool 连接池
-type ConnPool struct {
-	pool sync.Pool
-}
-
-// NewConnPool 创建一个新的连接池
-func NewConnPool() *ConnPool {
-	return &ConnPool{
-		pool: sync.Pool{
-			New: func() interface{} {
-				return &websocket.Conn{}
-			},
-		},
-	}
-}
-
-// Get 从连接池中获取一个连接
-func (p *ConnPool) Get() *websocket.Conn {
-	return p.pool.Get().(*websocket.Conn)
-}
-
-// Put 将连接放回连接池
-func (p *ConnPool) Put(conn *websocket.Conn) {
-	p.pool.Put(conn)
-}
-
 // WebSocketClient 封装了 WebSocket 客户端的功能
 type WebSocketClient struct {
-	connPool          *ConnPool // 连接池
 	conn              *websocket.Conn
+	wsURL             string        // WebSocket URL
 	proxyURL          string        // 代理 socks, http,https
 	headers           http.Header   // 请求头
 	messageChan       chan []byte   // 消息通道
@@ -60,9 +33,8 @@ type WebSocketClient struct {
 }
 
 // NewWebSocketClient 创建一个新的 WebSocket 客户端
-func NewWebSocketClient(proxyURL string, headers http.Header) (*WebSocketClient, error) {
-	client := &WebSocketClient{
-		connPool:          NewConnPool(), // 初始化连接池
+func NewWebSocketClient(proxyURL string, headers http.Header) *WebSocketClient {
+	return &WebSocketClient{
 		proxyURL:          proxyURL,
 		headers:           headers,
 		messageChan:       make(chan []byte, 100),
@@ -70,7 +42,6 @@ func NewWebSocketClient(proxyURL string, headers http.Header) (*WebSocketClient,
 		maxRetries:        5,               // 默认最大重试次数
 		reconnectInterval: 5 * time.Second, // 默认重试间隔
 	}
-	return client, nil
 }
 
 // Connect 连接到 WebSocket 服务器
@@ -78,14 +49,7 @@ func (c *WebSocketClient) Connect(ctx context.Context, wsURL string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// 从连接池中获取连接
-	conn := c.connPool.Get()
-	defer func() {
-		if conn != nil {
-			c.connPool.Put(conn)
-		}
-	}()
-
+	c.wsURL = wsURL
 	// 创建 WebSocket Dialer
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 1000 * time.Second,
@@ -139,8 +103,6 @@ func (c *WebSocketClient) Connect(ctx context.Context, wsURL string) error {
 	}
 
 	c.conn = conn
-	fmt.Printf("✅ WebSocket Connected to %s\n", wsURL)
-
 	go c.readMessages()
 
 	if c.onConnect != nil {
@@ -156,19 +118,17 @@ func (c *WebSocketClient) Connect(ctx context.Context, wsURL string) error {
 
 // readMessages 读取 WebSocket 消息
 func (c *WebSocketClient) readMessages() {
-	defer close(c.messageChan)
-
+	defer func() {
+		if c.reconnect {
+			c.reconnectChan <- struct{}{}
+		}
+	}()
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if c.onError != nil {
 				c.onError(err)
 			}
-			if c.reconnect {
-				c.reconnectChan <- struct{}{}
-			}
-			// 接连断开，销毁连接
-			c.Close()
 			return
 		}
 		if c.onMessage != nil {
@@ -197,37 +157,17 @@ func (c *WebSocketClient) SendMessage(ctx context.Context, message []byte) error
 
 // SendStrMsg 发送消息到 WebSocket 服务器
 func (c *WebSocketClient) SendStrMsg(ctx context.Context, message string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.conn == nil {
-		return errors.New("not connected")
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		return c.conn.WriteMessage(websocket.TextMessage, []byte(message))
-	}
+	return c.SendMessage(ctx, []byte(message))
 }
 
 // SendJSON 发送JSON数据到WebSocket服务器
 func (c *WebSocketClient) SendJSON(ctx context.Context, v interface{}) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return errors.New("not connected")
-	}
 	data, err := jsonutil.Marshal(v)
 	if err != nil {
 		return err
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		return c.conn.WriteMessage(websocket.TextMessage, []byte(data))
-	}
+	return c.SendMessage(ctx, []byte(data))
+
 }
 
 // GetMessageChan 获取消息通道
@@ -239,14 +179,12 @@ func (c *WebSocketClient) GetMessageChan() <-chan []byte {
 func (c *WebSocketClient) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	if c.conn == nil {
-		return nil
+	if c.conn != nil {
+		err := c.conn.Close()
+		c.conn = nil
+		return err
 	}
-	// 销毁连接
-	err := c.conn.Close()
-	c.conn = nil
-	return err
+	return nil
 }
 
 // SetOnMessage 设置消息处理回调
@@ -302,24 +240,13 @@ func (c *WebSocketClient) handleReconnect() {
 
 		time.Sleep(c.reconnectInterval) // 使用用户设置的重试间隔
 
-		// 检查 conn 是否为nil
-		if c.conn == nil {
-			if c.onError != nil {
-				c.onError(errors.New("connection is nil, cannot reconnect"))
-			}
+		if err := c.Connect(context.Background(), c.wsURL); err != nil {
 			retryCount++
-			continue
-		}
-		// 获取远程地址
-		remoteAddr := c.conn.RemoteAddr().String()
-		// 重新连接
-		if err := c.Connect(context.Background(), remoteAddr); err != nil {
 			if c.onError != nil {
 				c.onError(err)
 			}
-			retryCount++
 		} else {
-			retryCount = 0 // 重连成功后重置重试次数
+			retryCount = 0 // 成功后重置
 		}
 	}
 }

@@ -10,11 +10,7 @@ import (
 
 func TestWebSocketClient(t *testing.T) {
 	// 创建 WebSocket 客户端
-	client, err := NewWebSocketClient("", http.Header{})
-	if err != nil {
-		fmt.Println("Failed to create WebSocket client:", err)
-		return
-	}
+	client := NewWebSocketClient("", http.Header{})
 	// 设置消息处理回调
 	client.SetOnMessage(func(message []byte) {
 		fmt.Println("Received message:", string(message))
@@ -32,7 +28,7 @@ func TestWebSocketClient(t *testing.T) {
 
 	// 连接到 WebSocket 服务器
 	ctx := context.Background()
-	err = client.Connect(ctx, "ws://echo.websocket.org")
+	err := client.Connect(ctx, "ws://echo.websocket.org")
 	if err != nil {
 		fmt.Println("Failed to connect:", err)
 		return

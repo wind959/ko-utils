@@ -3,8 +3,11 @@ package netutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/wind959/ko-utils/jsonutil"
+	logutil "github.com/wind959/ko-utils/logger"
+	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 	"net"
 	"net/http"
@@ -243,10 +246,14 @@ func (c *WebSocketClient) handleReconnect() {
 		if err := c.Connect(context.Background(), c.wsURL); err != nil {
 			retryCount++
 			if c.onError != nil {
-				c.onError(err)
+				c.onError(fmt.Errorf("重连失败 (第 %d 次)：%w", retryCount, err))
 			}
 		} else {
+			logutil.Info("🔄 WebSocket 重连成功", zap.Int("retryCount", retryCount+1))
 			retryCount = 0 // 成功后重置
+			if c.onConnect != nil {
+				c.onConnect()
+			}
 		}
 	}
 }

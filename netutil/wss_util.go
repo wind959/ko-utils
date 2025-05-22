@@ -301,7 +301,19 @@ func (c *WebSocketClient) handleReconnect() {
 		}
 
 		time.Sleep(c.reconnectInterval) // 使用用户设置的重试间隔
-		if err := c.Connect(context.Background(), c.conn.RemoteAddr().String()); err != nil {
+
+		// 检查 conn 是否为nil
+		if c.conn == nil {
+			if c.onError != nil {
+				c.onError(errors.New("connection is nil, cannot reconnect"))
+			}
+			retryCount++
+			continue
+		}
+		// 获取远程地址
+		remoteAddr := c.conn.RemoteAddr().String()
+		// 重新连接
+		if err := c.Connect(context.Background(), remoteAddr); err != nil {
 			if c.onError != nil {
 				c.onError(err)
 			}

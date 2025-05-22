@@ -129,6 +129,9 @@ func (c *WebSocketClient) Connect(ctx context.Context, wsURL string) error {
 func (c *WebSocketClient) readMessages() {
 	defer func() {
 		if c.reconnect {
+			c.mu.Lock()
+			c.conn = nil
+			c.mu.Unlock()
 			c.reconnectChan <- struct{}{}
 		}
 	}()

@@ -6,8 +6,11 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gorilla/websocket v1.5.3
+	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.20.1
+	github.com/tjfoc/gmsm v1.4.1
+	go.etcd.io/bbolt v1.4.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 	golang.org/x/net v0.40.0
@@ -31,8 +34,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require (
-	github.com/mattn/go-sqlite3 v1.14.28 // indirect
-	go.etcd.io/bbolt v1.4.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
-)
+require go.uber.org/multierr v1.11.0 // indirect

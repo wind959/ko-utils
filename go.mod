@@ -31,4 +31,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require go.uber.org/multierr v1.11.0 // indirect
+require (
+	github.com/mattn/go-sqlite3 v1.14.28 // indirect
+	go.etcd.io/bbolt v1.4.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+)

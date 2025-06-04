@@ -772,22 +772,6 @@ func SaveToFile(filename string, data interface{}, formatFunc func(interface{}, 
 	return nil
 }
 
-// SaveToFileWithOverwrite 新增覆盖方法
-func SaveToFileWithOverwrite(filename string, data interface{}, formatFunc func(interface{}, io.Writer) error) error {
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
-
-	if err := formatFunc(data, file); err != nil {
-		return err
-	}
-	return nil
-}
-
 // FileExt 获取文件扩展名
 func FileExt(filename string) string {
 	dotIndex := strings.LastIndex(filename, ".")

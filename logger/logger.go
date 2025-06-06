@@ -3,6 +3,7 @@ package logutil
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"strings"
 	"time"
 )
 
@@ -20,13 +21,14 @@ const (
 	ErrorLevel LogLevel = "error"
 )
 
+// 全局 Logger 实例
+var _defaultLogger *Logger
+
 // Logger 日志工具类
 type Logger struct {
 	*zap.Logger
+	sugar *zap.SugaredLogger
 }
-
-// 全局 Logger 实例
-var _defaultLogger *Logger
 
 // InitGlobalLogger 初始化全局 Logger
 func InitGlobalLogger(env LogLevel) {
@@ -35,19 +37,20 @@ func InitGlobalLogger(env LogLevel) {
 
 // NewLogger 创建日志工具类实例
 func NewLogger(env LogLevel) *Logger {
+	level := strings.ToLower(string(env))
 	var config zap.Config
 
-	switch env {
-	case DebugLevel:
+	switch level {
+	case "debug":
 		config = zap.NewDevelopmentConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-	case InfoLevel:
+	case "info":
 		config = zap.NewDevelopmentConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	case WarnLevel:
+	case "warn":
 		config = zap.NewProductionConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
-	case ErrorLevel:
+	case "error":
 		config = zap.NewProductionConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
 	default:
@@ -82,7 +85,10 @@ func NewLogger(env LogLevel) *Logger {
 		panic("Failed to initialize logger: " + err.Error())
 	}
 
-	return &Logger{logger}
+	return &Logger{
+		Logger: logger,
+		sugar:  logger.Sugar(),
+	}
 }
 
 // Debug 打印 Debug 级别日志
@@ -105,7 +111,36 @@ func Error(msg string, fields ...zap.Field) {
 	_defaultLogger.Logger.Error(msg, fields...)
 }
 
+func Panic(msg string, fields ...zap.Field) {
+	_defaultLogger.Logger.Panic(msg, fields...)
+}
+
 // Fatal 打印 Fatal 级别日志并退出程序
 func Fatal(msg string, fields ...zap.Field) {
 	_defaultLogger.Logger.Fatal(msg, fields...)
+}
+
+/****************** 格式化日志方法 ******************/
+func Debugf(format string, args ...interface{}) {
+	_defaultLogger.sugar.Debugf(format, args...)
+}
+
+func Infof(format string, args ...interface{}) {
+	_defaultLogger.sugar.Infof(format, args...)
+}
+
+func Warnf(format string, args ...interface{}) {
+	_defaultLogger.sugar.Warnf(format, args...)
+}
+
+func Errorf(format string, args ...interface{}) {
+	_defaultLogger.sugar.Errorf(format, args...)
+}
+
+func Panicf(format string, args ...interface{}) {
+	_defaultLogger.sugar.Panicf(format, args...)
+}
+
+func Fatalf(format string, args ...interface{}) {
+	_defaultLogger.sugar.Fatalf(format, args...)
 }

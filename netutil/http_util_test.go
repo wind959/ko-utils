@@ -3,8 +3,9 @@ package netutil
 import (
 	"context"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 func demo1() {

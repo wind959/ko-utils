@@ -2,10 +2,11 @@ package viperutil
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/viper"
 )
 
 // Config Viper 配置管理器

@@ -1,10 +1,11 @@
 package logutil
 
 import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // LogLevel 定义日志级别
@@ -41,16 +42,16 @@ func NewLogger(env LogLevel) *Logger {
 	var config zap.Config
 
 	switch level {
-	case "debug":
+	case string(DebugLevel):
 		config = zap.NewDevelopmentConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-	case "info":
+	case string(InfoLevel):
 		config = zap.NewDevelopmentConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	case "warn":
+	case string(WarnLevel):
 		config = zap.NewProductionConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
-	case "error":
+	case string(ErrorLevel):
 		config = zap.NewProductionConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
 	default:

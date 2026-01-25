@@ -1,73 +1,54 @@
 package dbutils
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
-	"github.com/wind959/ko-utils/dbutils/sqliteutil"
-	"log"
 	"testing"
+	"time"
+
+	"github.com/wind959/ko-utils/dbutils/sqliteutil"
 )
 
 func TestSqlite(t *testing.T) {
-	err := sqliteutil.InitSqliteDB("test.db")
-	if err != nil {
-		t.Errorf("InitSqliteDB() error = %v", err)
-		return
-	}
-	defer sqliteutil.Close()
+	// 初始化
+	db := sqliteutil.GetInstance()
+	err := db.Init("test.db",
+		sqliteutil.WithPoolSize(10, 5),
+		sqliteutil.WithConnLifetime(10*time.Minute, 5*time.Minute),
+	)
 
-	// 2. 创建表
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// 创建表
 	columns := map[string]string{
-		"id":      "INTEGER PRIMARY KEY AUTOINCREMENT",
-		"name":    "TEXT NOT NULL",
-		"age":     "INTEGER",
-		"created": "DATETIME DEFAULT CURRENT_TIMESTAMP",
+		"id":         "INTEGER",
+		"name":       "TEXT",
+		"age":        "INTEGER",
+		"created_at": "DATETIME",
 	}
-	err = sqliteutil.CreateTable("users", columns, false)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// 3. 插入数据
-	data := map[string]interface{}{
-		"name": "Alice",
-		"age":  25,
-	}
-	id, err := sqliteutil.Insert("users", data)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Inserted record with ID: %d\n", id)
+	err = db.CreateTable(context.Background(), "users", columns,
+		sqliteutil.WithPrimaryKey("id"),
+		sqliteutil.WithUniqueConstraint("name"),
+	)
 
-	// 4. 查询数据
-	rows, err := sqliteutil.Query("users", []string{"id", "name", "age"}, "age > ?", 20)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// 插入数据
+	_, err = db.Insert(context.Background(), "users", map[string]interface{}{
+		"name":       "Alice",
+		"age":        25,
+		"created_at": time.Now(),
+	})
+
+	// 查询数据
+	rows, err := db.Query(context.Background(), "users", []string{"id", "name"}, "age > ?", 20)
 	defer rows.Close()
 
-	for rows.Next() {
-		var id, age int
-		var name string
-		err = rows.Scan(&id, &name, &age)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("ID: %d, Name: %s, Age: %d\n", id, name, age)
-	}
-
-	// 5. 更新数据
-	updateData := map[string]interface{}{
-		"age": 26,
-	}
-	affected, err := sqliteutil.Update("users", updateData, "name = ?", "Alice")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Updated %d rows\n", affected)
-
-	// 6. 删除数据
-	affected, err = sqliteutil.Delete("users", "name = ?", "Alice")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Deleted %d rows\n", affected)
+	// 使用事务
+	err = db.Transaction(context.Background(), func(tx *sql.Tx) error {
+		// 在事务中执行多个操作
+		_, err := tx.Exec("UPDATE users SET age = age + 1 WHERE id = ?", 1)
+		return err
+	})
 }

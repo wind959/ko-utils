@@ -1,6 +1,6 @@
 module github.com/wind959/ko-utils
 
-go 1.24.2
+go 1.24.12
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0

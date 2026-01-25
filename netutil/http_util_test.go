@@ -2,61 +2,80 @@ package netutil
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
-	"time"
-
-	"github.com/go-resty/resty/v2"
+	"testing"
 )
 
-func demo1() {
-	// 创建 HTTP 客户端
-	client := NewHttpClient(&HttpClientConfig{
-		Timeout:    10 * time.Second,
-		RetryCount: 3,
-		DefaultHeaders: map[string]string{
-			"User-Agent": "MyApp/1.0",
-		},
-	})
+func TestBasic(t *testing.T) {
+	cli := NewHttpClient(nil)
 
-	// 发送 GET 请求
-	ctx := context.Background()
-	resp, err := client.Get(ctx, "https://example.com", nil)
+	var resp map[string]any
+	_, err := cli.Get(context.Background(), "https://api.ipify.org?format=json", &resp)
 	if err != nil {
 		fmt.Println("Request failed:", err)
 		return
 	}
-	fmt.Println("Response:", resp.String())
+	fmt.Println("Response:", resp)
 }
 
-// 异步请求
-func demo2() {
-	// 创建 HTTP 客户端
-	client := NewHttpClient(&HttpClientConfig{
-		Timeout:    10 * time.Second,
-		RetryCount: 3,
+func Test2(t *testing.T) {
+	cli := NewHttpClient(&HttpClientConfig{
 		DefaultHeaders: map[string]string{
-			"User-Agent": "MyApp/1.0",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
 		},
 	})
+	var resp map[string]any
+	_, err := cli.Get(context.Background(), "https://api.ipify.org?format=json", &resp)
+	if err != nil {
+		fmt.Println("Request failed:", err)
+		return
+	}
+	fmt.Println("Response:", resp)
+}
 
-	// 异步发送 GET 请求
-	client.GetAsync(context.Background(), "https://example.com", nil, func(resp *resty.Response, err error) {
-		if err != nil {
-			fmt.Println("Async GET request failed:", err)
-			return
+func Test3(t *testing.T) {
+	cli := NewHttpClient(nil)
+	cli.SetDynamicHeaders(func(ctx context.Context) map[string]string {
+		token, _ := ctx.Value("token").(string)
+		if token == "" {
+			return nil
 		}
-		fmt.Println("Async GET response:", resp.String())
-	})
-
-	// 异步发送 POST 请求
-	client.PostJsonAsync(context.Background(), "https://example.com", map[string]string{"key": "value"}, nil, func(resp *resty.Response, err error) {
-		if err != nil {
-			fmt.Println("Async POST request failed:", err)
-			return
+		return map[string]string{
+			"Authorization": "Bearer " + token,
 		}
-		fmt.Println("Async POST response:", resp.String())
 	})
+	var resp map[string]any
+	ctx := context.WithValue(context.Background(), "token", "abc123")
+	cli.Get(ctx, "https://api.ipify.org?format=json", &resp)
+}
 
-	// 等待异步请求完成
-	time.Sleep(5 * time.Second)
+// Test4 每个请求一个 Trace ID
+func Test4(t *testing.T) {
+
+	cli := NewHttpClient(nil)
+	cli.SetDynamicHeaders(func(ctx context.Context) map[string]string {
+		return map[string]string{
+			"X-Request-ID": "aaaaa",
+		}
+	})
+}
+
+// Test5 过Cloudflare / 大 Header / 内网证书
+func Test5(t *testing.T) {
+	cli := NewHttpClient(&HttpClientConfig{
+		EnableCustomTransport: true,
+		MaxHeaderListSize:     256 << 10,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true, // 明确表达
+		},
+	})
+	// 测试过Cloudflare
+	var resp map[string]any
+	_, err := cli.Get(context.Background(), "https://api.ipify.org?format=json", &resp)
+	if err != nil {
+		fmt.Println("Request failed:", err)
+		return
+	}
+	fmt.Println("Response:", resp)
 }

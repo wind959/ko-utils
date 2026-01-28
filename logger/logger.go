@@ -54,7 +54,7 @@ func defaultConfig() LogConfig {
 		LogFileMaxBackups: 7,
 		LogMaxAge:         14,
 		LogCompress:       true,
-		LogCallerSkip:     2,
+		LogCallerSkip:     1,
 		LogStdout:         true,    // 默认输出到控制台
 		LogFormat:         Console, // 文件格式默认 console（仅影响文件！）
 		LogPath:           "",      // 默认不输出到文件
@@ -110,7 +110,7 @@ func InitGlobLogger(cfg ...LogConfig) error {
 
 		skip := conf.LogCallerSkip
 		if skip <= 0 {
-			skip = 2
+			skip = 1
 		}
 
 		logger := zap.New(
@@ -223,12 +223,6 @@ func Replace(logger *zap.Logger) {
 	if logger != nil {
 		zap.ReplaceGlobals(logger)
 	}
-}
-
-func SetCallerSkip(skip int) {
-	zap.ReplaceGlobals(
-		zap.L().WithOptions(zap.AddCallerSkip(skip)),
-	)
 }
 
 // 结构化（zap 原生）

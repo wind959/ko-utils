@@ -7,10 +7,11 @@ func TestName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	Debug("debug")
-	Info("info")
-	Warn("warn")
-	Error("error")
+	for {
+		go func() {
+			Info("info")
+		}()
+	}
 }
 
 func TestName2(t *testing.T) {

@@ -2,10 +2,11 @@ package mathutil
 
 import (
 	"fmt"
-	"golang.org/x/exp/constraints"
 	"math"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/constraints"
 )
 
 // Exponent 指数计算（x的n次方）
@@ -91,6 +92,26 @@ func TruncRound[T constraints.Float | constraints.Integer](x T, n int) T {
 	}
 	result, _ := strconv.ParseFloat(newFloat, 64)
 	return T(result)
+}
+
+// TruncateToString 直接截断，保留n位小数，返回字符串（不进行四舍五入）
+func TruncateToString[T constraints.Float | constraints.Integer](x T, n int) string {
+	result := TruncateToFloat(x, n)
+	return strconv.FormatFloat(result, 'f', n, 64)
+}
+
+// TruncateToFloat 直接截断，保留n位小数（不进行四舍五入）
+func TruncateToFloat[T constraints.Float | constraints.Integer](x T, n int) float64 {
+	if n < 0 {
+		return float64(x)
+	}
+
+	factor := math.Pow(10, float64(n))
+	temp := float64(x) * factor
+
+	// 使用math.Trunc直接截断小数部分
+	truncated := math.Trunc(temp) / factor
+	return truncated
 }
 
 // FloorToFloat 向下舍入（去尾法），保留n位小数
